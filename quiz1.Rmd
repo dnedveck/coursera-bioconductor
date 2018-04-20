@@ -1,0 +1,256 @@
+---
+title: "Quiz 1"
+author: "Derek"
+date: "April 12, 2018"
+output: html_document
+---
+
+Make sure that Bioconductor and the packages are installed: 
+```{r, eval = FALSE}
+source("https://bioconductor.org/biocLite.R")
+biocLite("GenomicRanges", "AnnotationHub", "rtracklayer")
+```
+
+```{r}
+knitr::opts_chunk$set(cache = TRUE)
+```
+
+
+```{r, message=FALSE}
+library(GenomicRanges)
+library(AnnotationHub)
+library(rtracklayer)
+# don't leave home without it
+library(magrittr)
+```
+
+
+
+## Q1 
+
+Use the AnnotationHub package to obtain data on "CpG Islands" in the human genome.
+
+Question: How many islands exists on the autosomes?
+
+26641, 24520, 26389, or 25320? 
+
+
+**--> 26641**
+
+### work
+
+I'm using this as a reference: http://kasperdanielhansen.github.io/genbioconductor/html/Usecase_AnnotationHub_GRanges.html
+
+Well, first, let's look at finding CpG Islands in AnnotationHub
+
+```{r, eval = FALSE}
+ahub <- AnnotationHub()
+# and only getting homo sapiens
+ahub <- subset(ahub, species == "Homo sapiens")
+```
+
+Can I find them by just querying "CpG" ?
+
+```{r}
+qhs <- query(ahub, "CpG Islands")
+qhs
+```
+
+OK, so I found some entries. 
+
+But now let's find the one that we want to use to find how many CpG islands there are ... and to do that we can explore the different mcols
+
+```{r}
+# let's check the genome version
+qhs$genome
+
+# and the description
+qhs$description
+```
+
+OK, there's nothing really ruling any one dataset out, so I'll just go with the most recent genome version, hg19. 
+
+```{r}
+qhs[1]
+```
+
+
+```{r}
+cpg.hg19 <- qhs[["AH5086"]]
+```
+
+And we want to know how many there are *on the autosomes*, which means we filter out the sex chromosomes. 
+
+To do this I'm going to go through a couple of steps: 
+
+- removing the non-standard chromosomes
+- removing the sex chromosomes, and mitochondrial chromosome
+- find the number of remaining islands
+
+
+Right now, there's a lot of non-standard names
+```{r}
+seqlevels(cpg.hg19)
+```
+
+
+So, my proposed filtering steps:
+```{r}
+cpg.hg19 %>% keepStandardChromosomes(., pruning.mode = "coarse") %>%
+    dropSeqlevels(., c("chrX", "chrY", "chrM"), pruning.mode = "coarse")
+```
+
+And this returns an object with 26641 ranges, which happens to aggree with an answer. Nice.
+
+
+
+## Q2
+
+
+Question: How many CpG Islands exists on chromosome 4.
+
+
+801, 1031, 1688, 1163
+
+**--> 1031**
+
+
+### work
+
+Ok, much like the workflow that I did before, but this time I'm going to only keep chr4 for the seqlevels
+
+```{r}
+cpg.hg19 %>% keepStandardChromosomes(., pruning.mode = "coarse") %>%
+    keepSeqlevels(., "chr4", pruning.mode = "coarse")
+```
+
+It looks like there's only 1031 CpG islands on chr4
+
+## Q3
+
+Obtain the data for the H3K4me3 histone modification for the H1 cell line from Epigenomics Roadmap, using AnnotationHub. Subset these regions to only keep regions mapped to the autosomes (chromosomes 1 to 22).
+
+Question: How many bases does these regions cover?
+
+
+37029137, 41135164, 40252794, 37923727
+
+
+### work 
+
+
+```{r}
+qhist <- ahub %>% subset(., species == "Homo sapiens") %>%
+    query(., "H3k4me3") %>%
+    query(., "H1") %>%
+    query(., "EpigenomeRoadMap") %>% 
+    query(., "GRanges")
+```
+
+I'm not sure which one to go with, as I don't know much about these cell lines ...
+
+I'll just pick the first one
+
+```{r}
+h1 <- qhist[[1]]
+```
+
+only getting the autosomes
+
+```{r}
+h1.auto <- h1 %>% dropSeqlevels(., c("chrX", "chrY", "chrM"), pruning.mode = "")
+```
+
+And now to find the total length of the bases covered ...
+
+I guess there's two methods here:
+
+```{r}
+h1.auto  %>% coverage %>% # find the regions that are covered
+    sum %>% # sum the coverage on each chromosome
+    sum # sum all the coverage on all the chromosomes
+```
+
+```{r}
+h1.auto %>% reduce %>% # no overlapping regions
+    width %>% sum # find the width of each region, sum them up
+```
+
+
+ok, none of the regions are part of the available questions, but I don't know if my method is wrong, or if I selected the wrong initial dataset. I'm thinking it's the latter.
+
+
+
+## Q4 
+
+Obtain the data for the H3K27me3 histone modification for the H1 cell line from Epigenomics Roadmap, using the AnnotationHub package. Subset these regions to only keep regions mapped to the autosomes. In the return data, each region has an associated "signalValue".
+
+Question: What is the mean signalValue across all regions on the standard chromosomes?
+
+
+4.320734, 5.143513, 5.198102, 4.770728
+
+
+
+## Q5
+
+Bivalent regions are bound by both H3K4me3 and H3K27me3.
+
+Question: Using the regions we have obtained above, how many bases on the standard chromosomes are bivalently marked?
+
+
+10207246, 10366379, 10081185, 10289096
+
+
+## Q6 
+
+We will examine the extent to which bivalent regions overlap CpG Islands.
+
+Question: how big a fraction (expressed as a number between 0 and 1) of the bivalent regions, overlap one or more CpG Islands?
+
+
+0.5283411, 0.5383644, 0.5791668, 0.5303776
+
+
+
+## Q7 
+
+
+Question: How big a fraction (expressed as a number between 0 and 1) of the bases which are part of CpG Islands, are also bivalent marked
+
+
+0.241688, 0.2299431, 0.1756357, 0.1813049
+
+
+
+## Q8
+
+Question: How many bases are bivalently marked within 10kb of CpG Islands?
+
+Tip: consider using the "resize()" function.
+
+
+10293363, 7433923, 9189910, 9782086
+
+
+
+
+## Q9
+
+Question: How big a fraction (expressed as a number between 0 and 1) of the human genome is contained in a CpG Island?
+
+Tip 1: the object returned by AnnotationHub contains "seqlengths".
+
+Tip 2: you may encounter an integer overflow. As described in the session on R Basic Types, you can address this by converting integers to numeric before summing them, "as.numeric()".
+
+
+0.007430701, 0.007047481, 0.008442448, 0.007602651
+
+
+
+## Q10 
+
+Question: Compute an odds-ratio for the overlap of bivalent marks with CpG islands.
+
+
+202.9378, 169.0962, 211.0553, 139.4016

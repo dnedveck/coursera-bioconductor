@@ -1,0 +1,9 @@
+base
+BiocGenerics
+S4Vectors
+IRanges
+GenomeInfoDb
+GenomicRanges
+AnnotationHub
+rtracklayer
+magrittr
