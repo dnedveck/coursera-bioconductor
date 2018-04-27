@@ -8,11 +8,11 @@ output: html_document
 Make sure that Bioconductor and the packages are installed: 
 ```{r, eval = FALSE}
 source("https://bioconductor.org/biocLite.R")
-biocLite("GenomicRanges", "AnnotationHub", "rtracklayer")
+biocLite(c("GenomicRanges", "AnnotationHub", "rtracklayer"))
 ```
 
 ```{r}
-knitr::opts_chunk$set(cache = TRUE)
+# knitr::opts_chunk$set(cache = TRUE)
 ```
 
 
@@ -43,7 +43,7 @@ I'm using this as a reference: http://kasperdanielhansen.github.io/genbioconduct
 
 Well, first, let's look at finding CpG Islands in AnnotationHub
 
-```{r, eval = FALSE}
+```{r}
 ahub <- AnnotationHub()
 # and only getting homo sapiens
 ahub <- subset(ahub, species == "Homo sapiens")
@@ -158,7 +158,7 @@ h1 <- qhist[[1]]
 only getting the autosomes
 
 ```{r}
-h1.auto <- h1 %>% dropSeqlevels(., c("chrX", "chrY", "chrM"), pruning.mode = "")
+h1.auto <- h1 %>% dropSeqlevels(., c("chrX", "chrY", "chrM"), pruning.mode = "coarse")
 ```
 
 And now to find the total length of the bases covered ...
